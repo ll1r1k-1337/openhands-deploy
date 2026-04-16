@@ -148,8 +148,9 @@ services:
     container_name: openhands
     environment:
       - WORKSPACE_MOUNT_PATH=${WORKSPACE_BASE}
-      - OH_WEB_URL=https://${DOMAIN_OR_IP}
-      - SANDBOX_CONTAINER_URL_PATTERN=https://${DOMAIN_OR_IP}/sandbox/{port}
+      # Добавляем порт 8443 в URL, чтобы интерфейс знал, куда стучаться
+      - OH_WEB_URL=https://${DOMAIN_OR_IP}:8443
+      - SANDBOX_CONTAINER_URL_PATTERN=https://${DOMAIN_OR_IP}:8443/sandbox/{port}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ~/.openhands-state:/.openhands-state
@@ -165,8 +166,9 @@ services:
     image: nginx:alpine
     container_name: openhands-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      # Слева - внешний порт на сервере, справа - внутренний в контейнере
+      - "8080:80"
+      - "8443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
