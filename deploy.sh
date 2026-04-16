@@ -144,7 +144,7 @@ echo -e "${YELLOW}[6/6] Создание docker-compose.yml...${NC}"
 cat << 'EOF' > docker-compose.yml
 services:
   openhands:
-    image: docker.all-hands.dev/all-hands-ai/openhands:latest
+    image: ghcr.io/openhands/openhands:main
     container_name: openhands
     environment:
       - WORKSPACE_MOUNT_PATH=${WORKSPACE_BASE}
