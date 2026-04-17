@@ -99,7 +99,7 @@ fi
 # Note: Since this is likely inside a script that terminates, 
 # 'openhands serve' or 'python -m openhands.app' might just start the process.
 # If we want to background it, '&' is correct but needs care.
-openhands serve --mount-cwd &
+openhands serve &
 
 
 
