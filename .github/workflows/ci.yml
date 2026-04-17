@@ -1,0 +1,42 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - fix-deploy-script
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssl gettext
+          # Install uv
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          source $HOME/.cargo/env
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Test deploy script
+        run: |
+          # Simulate non-interactive input for the script
+          # We can't easily run the full deployment without actual environment setup,
+          # but we can test if it starts up correctly without crashing immediately.
+          # Note: uv is required for running OpenHands, so we expect it to fail if uv is not properly configured.
+          chmod +x deploy.sh
+          # Mock input to run the script
+          # We check if script runs up to before env setup/app run to avoid failing on missing openhands installation.
+          # The error "python: No module named openhands.app" happens at line 92 of deploy.sh.
+          # We can temporarily comment out the app run line in test.
+          # The error "python: No module named openhands.app" happens because of app run. 
+          # We check if script runs now with improved install mechanism.
+          echo -e "test.domain\nadmin\npassword123\npassword123\n/openhands" | ./deploy.sh
+        continue-on-error: false

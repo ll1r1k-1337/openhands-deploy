@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenHands Service
+After=network.target
+
+[Service]
+ExecStart=/root/.local/bin/openhands serve --port ${PORT}
+WorkingDirectory=/root/openhands-deploy
+Restart=always
+User=root
+# Ensure environment variables if needed
+Environment="PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=multi-user.target
