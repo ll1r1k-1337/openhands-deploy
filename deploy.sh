@@ -89,14 +89,15 @@ echo -e "${YELLOW}[6/6] Развертывание OpenHands через uv...${N
 # Устанавливаем и запускаем OpenHands через uv
 # Примечание: Убедитесь, что необходимый репозиторий или пакет доступен
 cd "$DEPLOY_DIR"
-# Use 'uv run' to automatically manage environment and install.
-# Some envs might need --with or just installing separately.
-if uv run --with openhands -- python -m openhands.app &>/dev/null; then
-    uv run --with openhands -- python -m openhands.app &
-else
-    # Fallback to simple run if --with fails, or install separately if needed
-    echo -e "${YELLOW}Попытка запуска без --with...${NC}"
+# Create a virtual environment for openhands to ensure it can be found
+uv venv .venv
+# Source the venv, but we need to make sure the script continues or runs within this context
+# On CI, "source" might be tricky inside a subshell, so we might need to rely on uv explicitly.
+# Instead of source, just use uv run directly which should handle venv.
+if uv pip install openhands &>/dev/null; then
     uv run python -m openhands.app &
+else
+    echo -e "${RED}❌ Ошибка: Не удалось запустить OpenHands.${NC}"
 fi
 
 

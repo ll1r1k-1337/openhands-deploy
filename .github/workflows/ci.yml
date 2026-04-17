@@ -36,9 +36,7 @@ jobs:
           # We check if script runs up to before env setup/app run to avoid failing on missing openhands installation.
           # The error "python: No module named openhands.app" happens at line 92 of deploy.sh.
           # We can temporarily comment out the app run line in test.
-          sed -i '92s/^/#/' deploy.sh
-          # Create a dummy .htpasswd to avoid interactive prompt or file creation issues
-          mkdir -p nginx
-          touch nginx/.htpasswd
+          # The error "python: No module named openhands.app" happens because of app run. 
+          # We check if script runs now with improved install mechanism.
           echo -e "test.domain\nadmin\npassword123\npassword123\n/openhands" | ./deploy.sh
         continue-on-error: false
