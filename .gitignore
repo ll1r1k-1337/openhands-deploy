@@ -1,0 +1,17 @@
+# Deployment artifacts
+.env
+ssl/
+nginx/.htpasswd
+
+# System files / environment artifacts
+.openhands-state
+workspace/
+
+# Agent temporary files
+.agents_tmp/
+
+
+# Environment
+.venv
+__pycache__
+*.pyc

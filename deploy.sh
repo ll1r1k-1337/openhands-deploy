@@ -13,11 +13,10 @@ echo -e "${BLUE}    Автоматическое развертывание Open
 echo -e "${BLUE}=================================================${NC}\n"
 
 # 1. Проверка зависимостей
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}❌ Ошибка: Docker не установлен. Установите Docker перед запуском.${NC}"
+if ! command -v uv &> /dev/null; then
+    echo -e "${RED}❌ Ошибка: uv не установлен. Установите uv перед запуском.${NC}"
     exit 1
 fi
-
 if ! command -v openssl &> /dev/null; then
     echo -e "${RED}❌ Ошибка: OpenSSL не установлен. Пожалуйста, установите OpenSSL.${NC}"
     exit 1
@@ -64,8 +63,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 # 5. Генерация файла паролей (.htpasswd)
 echo -e "${YELLOW}[3/6] Настройка базовой HTTP-авторизации...${NC}"
-# Используем легковесный образ httpd для генерации хэша, чтобы не мусорить пакетами в системе
-docker run --rm httpd:alpine htpasswd -bn "$USERNAME" "$ADMIN_PASS" > nginx/.htpasswd
+# Используем openssl для генерации хэша
+printf "%s:%s\n" "$USERNAME" "$(openssl passwd -crypt "$ADMIN_PASS")" > nginx/.htpasswd
 
 # 6. Создание .env файла
 echo -e "${YELLOW}[4/6] Создание .env файла...${NC}"
@@ -76,117 +75,19 @@ EOF
 
 # 7. Генерация конфига Nginx
 echo -e "${YELLOW}[5/6] Создание конфигурации Nginx...${NC}"
-cat << 'EOF' > nginx/nginx.conf
-worker_processes auto;
+read -p "📂 Введите basepath для Nginx [по умолчанию: /openhands]: " BASE_PATH
+BASE_PATH=${BASE_PATH:-/openhands}
+export BASE_PATH
+envsubst < templates/nginx.conf.template > nginx/nginx.conf
 
-events {
-    worker_connections 1024;
-}
+# 8. Развертывание приложения через uv
+echo -e "${YELLOW}[6/6] Развертывание OpenHands через uv...${NC}"
+# Устанавливаем и запускаем OpenHands через uv
+# Примечание: Убедитесь, что необходимый репозиторий или пакет доступен
+uv run --with openhands -- python -m openhands.app &
 
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
 
-    map $http_upgrade $connection_upgrade {
-        default upgrade;
-        ''      close;
-    }
 
-    server {
-        listen 80;
-        server_name _;
-        return 301 https://$host$request_uri;
-    }
-
-    server {
-        listen 443 ssl;
-        server_name _;
-
-        ssl_certificate /etc/nginx/ssl/openhands.crt;
-        ssl_certificate_key /etc/nginx/ssl/openhands.key;
-
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers HIGH:!aNULL:!MD5;
-
-        auth_basic "Restricted Access to OpenHands";
-        auth_basic_user_file /etc/nginx/.htpasswd;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Убираем таймауты, чтобы сессия не рвалась, пока ИИ выполняет долгую задачу
-        proxy_read_timeout 86400;
-        proxy_send_timeout 86400;
-
-        location / {
-            proxy_pass http://openhands:3000;
-        }
-
-        # Маршрутизация к динамическим портам песочниц
-        location ~ ^/sandbox/(?<sandbox_port>\d+)/(.*)$ {
-            proxy_pass http://host.docker.internal:$sandbox_port/$2$is_args$args;
-        }
-
-        location ~ ^/sandbox/(?<sandbox_port>\d+)$ {
-            proxy_pass http://host.docker.internal:$sandbox_port/;
-        }
-    }
-}
-EOF
-
-# 8. Создание docker-compose.yml
-echo -e "${YELLOW}[6/6] Создание docker-compose.yml...${NC}"
-cat << 'EOF' > docker-compose.yml
-services:
-  openhands:
-    image: ghcr.io/openhands/openhands:main
-    container_name: openhands
-    environment:
-      - WORKSPACE_MOUNT_PATH=${WORKSPACE_BASE}
-      # Добавляем порт 8443 в URL, чтобы интерфейс знал, куда стучаться
-      - OH_WEB_URL=https://${DOMAIN_OR_IP}:8443
-      - SANDBOX_CONTAINER_URL_PATTERN=https://${DOMAIN_OR_IP}:8443/sandbox/{port}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ~/.openhands-state:/.openhands-state
-      - ${WORKSPACE_BASE}:/opt/workspace_base
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    stdin_open: true
-    tty: true
-    pull_policy: always
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    container_name: openhands-nginx
-    ports:
-      # Слева - внешний порт на сервере, справа - внутренний в контейнере
-      - "8080:80"
-      - "8443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - openhands
-    restart: unless-stopped
-EOF
-
-# 9. Запуск
-echo -e "\n${GREEN}🚀 Запуск контейнеров (при первом запуске скачивание образов займет несколько минут)...${NC}"
-if docker compose version &> /dev/null; then
-    docker compose up -d
-else
-    docker-compose up -d
-fi
 
 echo -e "\n${GREEN}================================================================${NC}"
 echo -e "${GREEN}✅ Установка успешно завершена!${NC}"
