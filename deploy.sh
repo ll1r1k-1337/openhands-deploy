@@ -89,7 +89,11 @@ echo -e "${YELLOW}[6/6] Развертывание OpenHands через uv...${N
 # Устанавливаем и запускаем OpenHands через uv
 # Примечание: Убедитесь, что необходимый репозиторий или пакет доступен
 cd "$DEPLOY_DIR"
-uv run --with openhands -- python -m openhands.app &
+if uv pip install openhands &>/dev/null || uv add openhands &>/dev/null; then
+    uv run python -m openhands.app &
+else
+    echo -e "${RED}❌ Ошибка: Не удалось установить или запустить OpenHands.${NC}"
+fi
 
 
 
