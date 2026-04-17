@@ -3,7 +3,7 @@ Description=OpenHands Service
 After=network.target
 
 [Service]
-ExecStart=/root/.local/bin/openhands serve
+ExecStart=/root/.local/bin/openhands serve --port ${PORT}
 WorkingDirectory=/root/openhands-deploy
 Restart=always
 User=root

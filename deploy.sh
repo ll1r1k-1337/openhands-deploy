@@ -82,6 +82,9 @@ echo -e "${YELLOW}[5/6] Создание конфигурации Nginx...${NC}"
 read -p "📂 Введите basepath для Nginx [по умолчанию: /openhands]: " BASE_PATH
 BASE_PATH=${BASE_PATH:-/openhands}
 export BASE_PATH
+read -p "🌐 Введите порт для OpenHands [по умолчанию: 3000]: " PORT
+PORT=${PORT:-3000}
+export PORT
 envsubst < "$SCRIPT_DIR/templates/nginx.conf.template" > "$DEPLOY_DIR/nginx/nginx.conf"
 
 # 8. Развертывание OpenHands как сервиса
@@ -94,7 +97,8 @@ fi
 
 # Настройка системного сервиса systemd
 # Заменяем /root на текущий домашний каталог, если не root
-cat "$SCRIPT_DIR/templates/openhands.service.template" | sed "s|/root|$HOME|g" > /etc/systemd/system/openhands.service
+# Используем envsubst для подстановки переменных (для PORT)
+cat "$SCRIPT_DIR/templates/openhands.service.template" | envsubst | sed "s|/root|$HOME|g" > /etc/systemd/system/openhands.service
 
 systemctl daemon-reload
 systemctl enable openhands
