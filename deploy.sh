@@ -86,19 +86,21 @@ envsubst < "$SCRIPT_DIR/templates/nginx.conf.template" > "$DEPLOY_DIR/nginx/ngin
 
 # 8. Развертывание приложения через uv
 echo -e "${YELLOW}[6/6] Развертывание OpenHands через uv...${NC}"
-# Устанавливаем и запускаем OpenHands через uv
-# Примечание: Убедитесь, что необходимый репозиторий или пакет доступен
 cd "$DEPLOY_DIR"
-# Create a virtual environment for openhands to ensure it can be found
-uv venv .venv
-# Source the venv, but we need to make sure the script continues or runs within this context
-# On CI, "source" might be tricky inside a subshell, so we might need to rely on uv explicitly.
-# Instead of source, just use uv run directly which should handle venv.
-if uv pip install openhands &>/dev/null; then
-    uv run python -m openhands.app &
-else
-    echo -e "${RED}❌ Ошибка: Не удалось запустить OpenHands.${NC}"
+# The official way according to docs is:
+# uv tool install openhands
+# openhands serve
+# However, the script is meant to deploy it. Let's try to just install it 
+# and use the serve command instead of python -m openhands.app.
+if ! command -v openhands &> /dev/null; then
+    uv tool install openhands --python 3.12
 fi
+# Launch the GUI server.
+# Note: Since this is likely inside a script that terminates, 
+# 'openhands serve' or 'python -m openhands.app' might just start the process.
+# If we want to background it, '&' is correct but needs care.
+openhands serve --mount-cwd &
+
 
 
 
