@@ -84,22 +84,24 @@ BASE_PATH=${BASE_PATH:-/openhands}
 export BASE_PATH
 envsubst < "$SCRIPT_DIR/templates/nginx.conf.template" > "$DEPLOY_DIR/nginx/nginx.conf"
 
-# 8. Развертывание приложения через uv
-echo -e "${YELLOW}[6/6] Развертывание OpenHands через uv...${NC}"
+# 8. Развертывание OpenHands как сервиса
+echo -e "${YELLOW}[6/6] Настройка и запуск OpenHands как сервиса...${NC}"
 cd "$DEPLOY_DIR"
-# The official way according to docs is:
-# uv tool install openhands
-# openhands serve
-# However, the script is meant to deploy it. Let's try to just install it 
-# and use the serve command instead of python -m openhands.app.
+
 if ! command -v openhands &> /dev/null; then
     uv tool install openhands --python 3.12
 fi
-# Launch the GUI server.
-# Note: Since this is likely inside a script that terminates, 
-# 'openhands serve' or 'python -m openhands.app' might just start the process.
-# If we want to background it, '&' is correct but needs care.
-openhands serve &
+
+# Настройка системного сервиса systemd
+# Заменяем /root на текущий домашний каталог, если не root
+cat "$SCRIPT_DIR/templates/openhands.service.template" | sed "s|/root|$HOME|g" > /etc/systemd/system/openhands.service
+
+systemctl daemon-reload
+systemctl enable openhands
+systemctl restart openhands
+
+echo -e "${GREEN}✅ OpenHands запущен как systemd сервис.${NC}"
+
 
 
 
